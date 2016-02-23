@@ -17,7 +17,7 @@ struct superblock /*The key information of filesystem */
 	int next_available_inode; /* The index of the next free inode */
 	int next_available_blk; /* The index of the next free block */
 	int blk_size; /* The size per block */
-}
+};
 
 struct inode /* The structure of inode, each file has only one inode */
 {
@@ -29,7 +29,7 @@ struct inode /* The structure of inode, each file has only one inode */
 	int direct_blk[2]; /*Two direct data block pointers */
 	int indirect_blk; /*One indirect data block pointer */
 	int file_num; /* The number of file in directory, it is 0 if it is file*/
-}
+};
 
 typedef struct dir_mapping /* Record file information in directory file */
 {
