@@ -21,7 +21,8 @@ int open_t( const char *pathname, int flags)
 	char* string;
 	string = strdup(pathname);
 	int found = 0;
-	int inodeNum = 0; //root dir's inode number
+	int inodeNum = 0; //root dir's inode number -> next dir's inode num ->...
+	int targetNum;
 	int distance = 0;
 	int count = 0;
 	char tokenArr[11][509];
@@ -35,8 +36,10 @@ int open_t( const char *pathname, int flags)
 		{
 			if(count>=1) //after root dir, start putting in dir/file name in array
 			{
-				strcpy(tokenArr[distance++],token);
-				printf(token);
+				if(strcmp(token,"")!=0){
+					strcpy(tokenArr[distance++],token);
+					printf("%s\n",token);
+				}
 			}
 			count++;
 		}
@@ -60,10 +63,16 @@ int open_t( const char *pathname, int flags)
 				sb = getSuperBlock();
 				int next_available_inode = sb.next_available_inode;
 				int next_available_blk = sb.next_available_blk;
-				inodeNum = createInode(tokenArr[count], inode_, inodeNum, next_available_inode, next_available_blk, flags);
 
+				//targetNum = createInode(tokenArr[count], inode_, inodeNum, next_available_inode, next_available_blk, flags);
+				printf("outside createInode\n");
+				printf("outside createInode\n");
+				printf("outside createInode\n");
+				printf("outside createInode\n");
+				printf("outside createInode\n");
+				printf("outside createInode\n");
 				//update sb
-				return inodeNum;
+				return targetNum;
 			}
 
 			for(i=0; i<MAX_INODE; i++)
@@ -77,7 +86,7 @@ int open_t( const char *pathname, int flags)
 				{
 					found = 1;
 					inodeNum = mapping.inode_number;
-					printf("matching name is:  %d;\n and it's inode num is:  %d;", mapping.dir, mapping.inode_number);
+					printf("tokenArr[count] is: %s; matching name is:  %s; and it's inode num is:  %d;", tokenArr[count], mapping.dir, mapping.inode_number);
 					if(distance==0 && flags==2) //reach the end of path and flag is 2
 						return inodeNum;
 					break;
@@ -129,6 +138,7 @@ struct inode getInode(int inode_number)
 
 int createInode(char* name, struct inode parentInode, int parentInodeNum, int next_available_inode, int next_available_blk, int flags)
 {
+	printf("inside createInode\n");
 	int fd = open ("HD", O_RDWR, 660);
 	int fileType;
 	if(flags==0) fileType = 1;
@@ -170,7 +180,7 @@ int createInode(char* name, struct inode parentInode, int parentInodeNum, int ne
 		inode->file_num = 0;
 	}
 
-	lseek(fd, INODE_OFFSET+sizeof(struct inode)*next_available_inode, SEEK_SET);
+	lseek(fd, INODE_OFFSET+sizeof(struct inode) * next_available_inode, SEEK_SET);
 	write(fd, (void *)inode, sizeof(struct inode));
 
 	//update superblock
@@ -190,12 +200,13 @@ int createInode(char* name, struct inode parentInode, int parentInodeNum, int ne
 
 	//create dir_mapping in parent dir
 	createMapping(name,next_available_inode,parentInode,parentInodeNum);
-
+	printf("outside createMapping\n");
 	return next_available_inode;
 }
 
 void createMapping(char* name, int inodeNum, struct inode parentInode, int parentInodeNum)
 {
+	printf("inside createMapping\n");
 	int fd = open ("HD", O_RDWR, 660);
 	struct dir_mapping* mapping;
 	mapping = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
@@ -217,12 +228,13 @@ void createMapping(char* name, int inodeNum, struct inode parentInode, int paren
 
 	lseek(fd, INODE_OFFSET+parentInodeNum*sizeof(struct inode), SEEK_SET); 
 	write(fd, (void *)parent, sizeof(struct inode));
+
 	close(fd);
 }
 
 int main()
 {
-	open_t("/",2);
+	printf("inode is: %d\n", open_t("/sad/sad",0));
 	return 0;
 }
 //dir_mapping = 16byte
