@@ -22,10 +22,10 @@ int open_t( const char *pathname, int flags)
 	char tokenArr[11][509];
 	char* dirList[10];
 	int fd = open ("HD", O_RDWR, 660);
-
+	int dirDataBlkIndex;
 	if (string != NULL) 
 	{
-		while ((token = strsep(&string, "/")) != NULL)
+		while ((token = strsep(&string, "/")) != NULL) //split path name
 		{
 			if(count>=1) //after root dir, start putting in dir/file name in array
 			{
@@ -41,10 +41,21 @@ int open_t( const char *pathname, int flags)
 			//search through the data block(which contains dir_mapping)
 			//of the dir(root first) to get dir_mapping of next dir/file
 			struct dir_mapping mapping;
-			
-			if(distance==0 && (flags==0 || flags==1)) //reach the end of path, create new file
+			struct inode inode_;
+			inode_ = getInode(inodeNum); //inode of parent dir
+
+			dir_dataBlkIndex = inode_.direct_blk[0];
+
+			if(distance==0 && (flags==0 || flags==1)) //reach the end of path, create new file (dont need to search!)
 			{
-				inodeNum = createFile(inodeNum,flags);
+				close(fd);
+				struct superblock sb;
+				sb = getSuperBlock();
+				int next_available_inode = sb.next_available_inode;
+				int next_available_blk = sb.next_available_blk;
+				inodeNum = createInode(inodeNum,next_available_inode,next_available_blk,flags);
+
+				//update sb
 				return inodeNum;
 			}
 
@@ -52,7 +63,7 @@ int open_t( const char *pathname, int flags)
 			{
 				//go to the datablock that belongs to "inodeNum", 
 				//then start searching it MAX_INODE times
-				lseek(fd, DATA_OFFSET + inodeNum*BLOCK_SIZE + (i*sizeof(struct dir_mapping)), SEEK_SET);
+				lseek(fd, DATA_OFFSET + dir_dataBlkIndex * BLOCK_SIZE + (i*sizeof(struct dir_mapping)), SEEK_SET);
 				read(fd, (void *)&mapping, sizeof(struct dir_mapping));
 				//got the mapping, see if the next dir/file exist
 				if(strcmp(tokenArr[count],mapping.dir)==0)
@@ -87,26 +98,71 @@ int open_t( const char *pathname, int flags)
 	else return inodeNum; //last inodeNum found is also the answer
 }
 
-int createFile(int parentInodeNum, int flags)
-{
-	if(flags == 0) //create file
-	{
-		;
-	}
-	else //create dir
-	{
-		;
-	}
-}
-
 struct superblock getSuperBlock() //just get struct, get next_available_inode/blk in open_t
 {
-	;
+	int fd = open ("HD", O_RDWR, 660);
+	struct superblock sb;
+	lseek(fd, SB_OFFSET, SEEK_SET);
+	read(fd, (void *)&sb, sizeof(struct superblock));
+	printf("sb nextINODE %d;\n", sb.next_available_inode);
+	close(fd);
+	return sb;
 }
 
-struct inode createInode(int inodeNum, int blkNum, int flags)
+struct inode getInode(int inode_number)
 {
-	;
+	int fd = open ("HD", O_RDWR, 660);
+	struct inode inode_;
+	lseek(fd, INODE_OFFSET+inode_number*sizeof(struct inode), SEEK_SET); 
+	read(fd, (void *)&inode_, sizeof(struct inode));
+	printf("getInode.i_number %d;\n", inode_.i_number);
+	close(fd);
+	return inode_;
+}
+
+struct inode createInode(int parentInodeNum, int next_available_inode, int next_available_blk, int flags)
+{
+	int fd = open ("HD", O_RDWR, 660);
+	if(flags==0) flags = 1;
+	else if(flags==1) flags = 0;
+
+	struct inode;
+	inode = (struct inode*)malloc(sizeof(struct inode));
+	inode->i_number = next_available_inode;
+	inode->i_mtime = time(NULL);
+	inode->i_type = flags;
+	inode->i_size = 0;
+	inode->i_blocks = 1;
+	inode->direct_blk[0] = next_available_blk;
+	inode->direct_blk[1] = -1;
+	inode->indirect_blk = -1;
+	inode->file_num = 0;
+
+	lseek(fd, INODE_OFFSET+sizeof(struct inode)*next_available_inode, SEEK_SET);
+	write(fd, (void *)inode, sizeof(struct inode));
+
+	struct superblock sb;
+	sb = (struct superblock*)malloc(sizeof(struct superblock));
+	sb->inode_offset = INODE_OFFSET;
+	sb->data_offset = DATA_OFFSET;
+	sb->max_inode = MAX_INODE;
+	sb->max_data_blk = MAX_DATA_BLK;
+	sb->blk_size = BLOCK_SIZE;
+	sb->next_available_inode = (next_available_inode+1);
+	sb->next_available_blk = (next_available_blk+1);
+
+	lseek(fd, SB_OFFSET, SEEK_SET);
+	write(fd, (void *)sb, sizeof(struct superblock));
+	close(fd);
+
+	//create dir_mapping in parent dir
+	createMapping(parentInodeNum);
+
+	//create dir_mapping if the file is a directory:
+	if(flags==2)
+	{
+		createMapping_Dir(next_available_inode);
+	}
 }
 
 struct dir_mapping createMapping(int parentInodeNum)
