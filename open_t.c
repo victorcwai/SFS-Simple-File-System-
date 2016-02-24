@@ -42,6 +42,12 @@ int open_t( const char *pathname, int flags)
 			//of the dir(root first) to get dir_mapping of next dir/file
 			struct dir_mapping mapping;
 			
+			if(distance==0 && (flags==0 || flags==1)) //reach the end of path, create new file
+			{
+				inodeNum = createFile(inodeNum,flags);
+				return inodeNum;
+			}
+
 			for(int i=0; i<MAX_INODE; i++)
 			{
 				//go to the datablock that belongs to "inodeNum", 
@@ -54,6 +60,8 @@ int open_t( const char *pathname, int flags)
 					found = 1;
 					inodeNum = mapping.inode_number;
 					printf("matching name is:  %d;\n and it's inode num is:  %d;", mapping.dir, mapping.inode_number);
+					if(distance==0 && flags==2) //reach the end of path and flag is 2
+						return inodeNum;
 					break;
 				}
 			} 
@@ -78,10 +86,38 @@ int open_t( const char *pathname, int flags)
 	}
 	else return inodeNum; //last inodeNum found is also the answer
 }
-// The argument flags can be one of the following three values: 0 (or 1) means that a
-// new regular (or directory) file will be created (if one file with the same name
-// exists, the new file will replace the old file); 2 means that the target is an existing
-// file.
+
+int createFile(int parentInodeNum, int flags)
+{
+	if(flags == 0) //create file
+	{
+		;
+	}
+	else //create dir
+	{
+		;
+	}
+}
+
+struct superblock getSuperBlock() //just get struct, get next_available_inode/blk in open_t
+{
+	;
+}
+
+struct inode createInode(int inodeNum, int blkNum, int flags)
+{
+	;
+}
+
+struct dir_mapping createMapping(int parentInodeNum)
+{
+	;
+}
+
+struct dir_mapping createMapping_Dir(int inodeNum)
+{
+	;
+}
 
 int main()
 {
@@ -89,3 +125,8 @@ int main()
 	return 0;
 }
 //dir_mapping = 16byte
+//everytime u create file: 
+//	update sb: get sb -> get next_available_inode/blk + update it
+//	create inode: put next_available_inode/blk in inode -> create it -> put it inside using next_available_inode
+//	create dir_mapping in parent dir: create dir_mapping -> put it inside using parent inode (for accessing parent's data blk)
+//	(for dir file: create dir_mapping): create dir_mapping -> put it inside using next_available_inode (for accessing it's data blk)
