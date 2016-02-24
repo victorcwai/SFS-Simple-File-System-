@@ -8,6 +8,11 @@
 #include <fcntl.h>
 #include <time.h>
 #include "sfsheader.h"
+struct superblock getSuperBlock();
+struct inode getInode(int inode_number);
+int createInode(char* name, struct inode parentInode, int parentInodeNum, int next_available_inode, int next_available_blk, int flags);
+void createMapping(char* name, int inodeNum, struct inode parentInode, int parentInodeNum);
+
 
 
 int open_t( const char *pathname, int flags)
@@ -23,6 +28,7 @@ int open_t( const char *pathname, int flags)
 	char* dirList[10];
 	int fd = open ("HD", O_RDWR, 660);
 	int dirDataBlkIndex;
+	int i;
 	if (string != NULL) 
 	{
 		while ((token = strsep(&string, "/")) != NULL) //split path name
@@ -30,6 +36,7 @@ int open_t( const char *pathname, int flags)
 			if(count>=1) //after root dir, start putting in dir/file name in array
 			{
 				strcpy(tokenArr[distance++],token);
+				printf(token);
 			}
 			count++;
 		}
@@ -44,7 +51,7 @@ int open_t( const char *pathname, int flags)
 			struct inode inode_;
 			inode_ = getInode(inodeNum); //inode of parent dir
 
-			dir_dataBlkIndex = inode_.direct_blk[0];
+			dirDataBlkIndex = inode_.direct_blk[0];
 
 			if(distance==0 && (flags==0 || flags==1)) //reach the end of path, create new file (dont need to search!)
 			{
@@ -53,17 +60,17 @@ int open_t( const char *pathname, int flags)
 				sb = getSuperBlock();
 				int next_available_inode = sb.next_available_inode;
 				int next_available_blk = sb.next_available_blk;
-				inodeNum = createInode(inodeNum,next_available_inode,next_available_blk,flags);
+				inodeNum = createInode(tokenArr[count], inode_, inodeNum, next_available_inode, next_available_blk, flags);
 
 				//update sb
 				return inodeNum;
 			}
 
-			for(int i=0; i<MAX_INODE; i++)
+			for(i=0; i<MAX_INODE; i++)
 			{
 				//go to the datablock that belongs to "inodeNum", 
 				//then start searching it MAX_INODE times
-				lseek(fd, DATA_OFFSET + dir_dataBlkIndex * BLOCK_SIZE + (i*sizeof(struct dir_mapping)), SEEK_SET);
+				lseek(fd, DATA_OFFSET + dirDataBlkIndex * BLOCK_SIZE + (i*sizeof(struct dir_mapping)), SEEK_SET);
 				read(fd, (void *)&mapping, sizeof(struct dir_mapping));
 				//got the mapping, see if the next dir/file exist
 				if(strcmp(tokenArr[count],mapping.dir)==0)
@@ -120,28 +127,54 @@ struct inode getInode(int inode_number)
 	return inode_;
 }
 
-struct inode createInode(int parentInodeNum, int next_available_inode, int next_available_blk, int flags)
+int createInode(char* name, struct inode parentInode, int parentInodeNum, int next_available_inode, int next_available_blk, int flags)
 {
 	int fd = open ("HD", O_RDWR, 660);
-	if(flags==0) flags = 1;
-	else if(flags==1) flags = 0;
+	int fileType;
+	if(flags==0) fileType = 1;
+	else if(flags==1) fileType = 0;
 
-	struct inode;
+	struct inode* inode;
 	inode = (struct inode*)malloc(sizeof(struct inode));
 	inode->i_number = next_available_inode;
 	inode->i_mtime = time(NULL);
-	inode->i_type = flags;
+	inode->i_type = fileType;
 	inode->i_size = 0;
 	inode->i_blocks = 1;
 	inode->direct_blk[0] = next_available_blk;
 	inode->direct_blk[1] = -1;
 	inode->indirect_blk = -1;
-	inode->file_num = 0;
+
+	//create dir_mapping ".", ".." if the file is a directory:
+	if(fileType==0)
+	{
+		inode->file_num = 2; //self+parent
+		struct dir_mapping* self;
+		self = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+		strcpy(self->dir,".");
+		self->inode_number = next_available_inode;
+
+		struct dir_mapping* parent;
+		parent = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+		strcpy(parent->dir, "..");
+		parent->inode_number = parentInodeNum;
+
+		lseek(fd, DATA_OFFSET + inode->direct_blk[0]*BLOCK_SIZE + sizeof(struct dir_mapping), SEEK_SET);
+		write(fd, (void *)self, sizeof(struct dir_mapping));
+
+		lseek(fd, DATA_OFFSET + inode->direct_blk[0]*BLOCK_SIZE + sizeof(struct dir_mapping)*2, SEEK_SET);
+		write(fd, (void *)parent, sizeof(struct dir_mapping));
+	}
+	else
+	{
+		inode->file_num = 0;
+	}
 
 	lseek(fd, INODE_OFFSET+sizeof(struct inode)*next_available_inode, SEEK_SET);
 	write(fd, (void *)inode, sizeof(struct inode));
 
-	struct superblock sb;
+	//update superblock
+	struct superblock* sb;
 	sb = (struct superblock*)malloc(sizeof(struct superblock));
 	sb->inode_offset = INODE_OFFSET;
 	sb->data_offset = DATA_OFFSET;
@@ -156,33 +189,45 @@ struct inode createInode(int parentInodeNum, int next_available_inode, int next_
 	close(fd);
 
 	//create dir_mapping in parent dir
-	createMapping(parentInodeNum);
+	createMapping(name,next_available_inode,parentInode,parentInodeNum);
 
-	//create dir_mapping if the file is a directory:
-	if(flags==2)
-	{
-		createMapping_Dir(next_available_inode);
-	}
+	return next_available_inode;
 }
 
-struct dir_mapping createMapping(int parentInodeNum)
+void createMapping(char* name, int inodeNum, struct inode parentInode, int parentInodeNum)
 {
-	;
-}
+	int fd = open ("HD", O_RDWR, 660);
+	struct dir_mapping* mapping;
+	mapping = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+	strcpy(mapping->dir, name);
+	mapping->inode_number = inodeNum;
+	lseek(fd, DATA_OFFSET + parentInode.direct_blk[0] * BLOCK_SIZE + (parentInode.file_num * sizeof(struct dir_mapping)), SEEK_SET);
+	write(fd, (void *)mapping, sizeof(struct dir_mapping));
+	//update parent dir inode
+	struct inode* parent;
+	parent->i_number = parentInode.i_number;
+	parent->i_mtime = parentInode.i_mtime;
+	parent->i_type = parentInode.i_type;
+	parent->i_size = parentInode.i_size;
+	parent->i_blocks = parentInode.i_blocks;
+	parent->direct_blk[0] = parentInode.direct_blk[0];
+	parent->direct_blk[1] = parentInode.direct_blk[1];
+	parent->indirect_blk = parentInode.indirect_blk;
+	parent->file_num = parentInode.file_num+1; //update here 
 
-struct dir_mapping createMapping_Dir(int inodeNum)
-{
-	;
+	lseek(fd, INODE_OFFSET+parentInodeNum*sizeof(struct inode), SEEK_SET); 
+	write(fd, (void *)parent, sizeof(struct inode));
+	close(fd);
 }
 
 int main()
 {
-	open_t("/1/2/3/4/5/6/7/8/9/10/file.f",0);
+	open_t("/",2);
 	return 0;
 }
 //dir_mapping = 16byte
 //everytime u create file: 
 //	update sb: get sb -> get next_available_inode/blk + update it
 //	create inode: put next_available_inode/blk in inode -> create it -> put it inside using next_available_inode
-//	create dir_mapping in parent dir: create dir_mapping -> put it inside using parent inode (for accessing parent's data blk)
+//	create dir_mapping in parent dir: create dir_mapping -> put it inside using parent inode (for accessing parent's data blk) -> update parent inode dir's file_num
 //	(for dir file: create dir_mapping): create dir_mapping -> put it inside using next_available_inode (for accessing it's data blk)

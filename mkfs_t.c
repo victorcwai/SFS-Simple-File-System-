@@ -51,6 +51,7 @@ int main()
 	//each dir contains at least 2 dir_mapping: itself and parent
 	//create rootDir itself dir_mapping
 	rootDir = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+	strcpy(rootDir->dir,".");
 	rootDir->inode_number=0;
 	lseek(fd, DATA_OFFSET, SEEK_SET); //point to INODE_OFFSET
 	write(fd, (void *)rootDir, sizeof(struct dir_mapping));	
