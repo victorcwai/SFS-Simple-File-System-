@@ -25,8 +25,8 @@ int open_t( const char *pathname, int flags)
 	int distance = 0;
 	int count = 0;
 	char tokenArr[11][509];
-	//char* dirList[10];
-	int fd = open ("./HD", O_RDWR);
+	char* dirList[10];
+	int fd = open ("HD", O_RDWR, 660);
 	int dirDataBlkIndex;
 	int i;
 	if (string != NULL) 
@@ -54,17 +54,16 @@ int open_t( const char *pathname, int flags)
 			inode_ = getInode(inodeNum); //inode of parent dir
 
 			dirDataBlkIndex = inode_.direct_blk[0];
-            printf("dllmO\n");
+
 			if(distance==0 && (flags==0 || flags==1)) //reach the end of path, create new file (dont need to search!)
 			{
 				close(fd);
-                printf("dllmI\n");
 				struct superblock sb;
 				sb = getSuperBlock();
 				int next_available_inode = sb.next_available_inode;
 				int next_available_blk = sb.next_available_blk;
 
-				targetNum = createInode(tokenArr[count], inode_, inodeNum, next_available_inode, next_available_blk, flags);
+				//targetNum = createInode(tokenArr[count], inode_, inodeNum, next_available_inode, next_available_blk, flags);
 				printf("outside createInode\n");
 				//update sb
 				return targetNum;
@@ -134,65 +133,63 @@ struct inode getInode(int inode_number)
 int createInode(char* name, struct inode parentInode, int parentInodeNum, int next_available_inode, int next_available_blk, int flags)
 {
 	printf("inside createInode\n");
-	int fd = open ("./HD", O_RDWR);
-	int fileType = -1;
+	int fd = open ("HD", O_RDWR, 660);
+	int fileType;
 	if(flags==0) fileType = 1;
 	else if(flags==1) fileType = 0;
 
-	struct inode inode={0};
-	//inode = (struct inode*)malloc(sizeof(struct inode));
-	inode.i_number = next_available_inode;
-	inode.i_mtime = time(NULL);
-	inode.i_type = fileType;
-	inode.i_size = 0;
-	inode.i_blocks = 1;
-	inode.direct_blk[0] = next_available_blk;
-	inode.direct_blk[1] = -1;
-	inode.indirect_blk = -1;
+	struct inode* inode;
+	inode = (struct inode*)malloc(sizeof(struct inode));
+	inode->i_number = next_available_inode;
+	inode->i_mtime = time(NULL);
+	inode->i_type = fileType;
+	inode->i_size = 0;
+	inode->i_blocks = 1;
+	inode->direct_blk[0] = next_available_blk;
+	inode->direct_blk[1] = -1;
+	inode->indirect_blk = -1;
 
 	//create dir_mapping ".", ".." if the file is a directory:
 	if(fileType==0)
 	{
-		inode.file_num = 2; //self+parent
-		struct dir_mapping self={};
-		//self = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
-		strcpy(self.dir,".");
-		self.inode_number = next_available_inode;
+		inode->file_num = 2; //self+parent
+		struct dir_mapping* self;
+		self = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+		strcpy(self->dir,".");
+		self->inode_number = next_available_inode;
 
-		struct dir_mapping parent={};
-		//parent = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
-		strcpy(parent.dir, "..");
-		parent.inode_number = parentInodeNum;
+		struct dir_mapping* parent;
+		parent = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+		strcpy(parent->dir, "..");
+		parent->inode_number = parentInodeNum;
 
-        //char asd[5]="asd";
-        //printf("sizeof(self):%d\n",sizeof(self));
-		lseek(fd, DATA_OFFSET + inode.direct_blk[0]*BLOCK_SIZE + sizeof(struct dir_mapping), SEEK_SET);
-		write(fd, &self, sizeof(struct dir_mapping));
+		lseek(fd, DATA_OFFSET + inode->direct_blk[0]*BLOCK_SIZE + sizeof(struct dir_mapping), SEEK_SET);
+		write(fd, (void *)self, sizeof(struct dir_mapping));
 
-		lseek(fd, DATA_OFFSET + inode.direct_blk[0]*BLOCK_SIZE + sizeof(struct dir_mapping)*2, SEEK_SET);
-		write(fd, &parent, sizeof(struct dir_mapping));
+		lseek(fd, DATA_OFFSET + inode->direct_blk[0]*BLOCK_SIZE + sizeof(struct dir_mapping)*2, SEEK_SET);
+		write(fd, (void *)parent, sizeof(struct dir_mapping));
 	}
 	else
 	{
-		inode.file_num = 0;
+		inode->file_num = 0;
 	}
 
 	lseek(fd, INODE_OFFSET+sizeof(struct inode) * next_available_inode, SEEK_SET);
-	write(fd, &inode, sizeof(struct inode));
+	write(fd, (void *)inode, sizeof(struct inode));
 
 	//update superblock
-	struct superblock sb={};
-	//sb = (struct superblock*)malloc(sizeof(struct superblock));
-	sb.inode_offset = INODE_OFFSET;
-	sb.data_offset = DATA_OFFSET;
-	sb.max_inode = MAX_INODE;
-	sb.max_data_blk = MAX_DATA_BLK;
-	sb.blk_size = BLOCK_SIZE;
-	sb.next_available_inode = (next_available_inode+1);
-	sb.next_available_blk = (next_available_blk+1);
+	struct superblock* sb;
+	sb = (struct superblock*)malloc(sizeof(struct superblock));
+	sb->inode_offset = INODE_OFFSET;
+	sb->data_offset = DATA_OFFSET;
+	sb->max_inode = MAX_INODE;
+	sb->max_data_blk = MAX_DATA_BLK;
+	sb->blk_size = BLOCK_SIZE;
+	sb->next_available_inode = (next_available_inode+1);
+	sb->next_available_blk = (next_available_blk+1);
 
 	lseek(fd, SB_OFFSET, SEEK_SET);
-	write(fd, &sb, sizeof(struct superblock));
+	write(fd, (void *)sb, sizeof(struct superblock));
 	close(fd);
 
 	//create dir_mapping in parent dir
@@ -204,34 +201,34 @@ int createInode(char* name, struct inode parentInode, int parentInodeNum, int ne
 void createMapping(char* name, int inodeNum, struct inode parentInode, int parentInodeNum)
 {
 	printf("inside createMapping\n");
-	int fd = open ("./HD", O_RDWR, 660);
-	struct dir_mapping mapping={};
-	//mapping = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
-	strcpy(mapping.dir, name);
-	mapping.inode_number = inodeNum;
+	int fd = open ("HD", O_RDWR, 660);
+	struct dir_mapping* mapping;
+	mapping = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
+	strcpy(mapping->dir, name);
+	mapping->inode_number = inodeNum;
 	lseek(fd, DATA_OFFSET + parentInode.direct_blk[0] * BLOCK_SIZE + (parentInode.file_num * sizeof(struct dir_mapping)), SEEK_SET);
-	write(fd, &mapping, sizeof(struct dir_mapping));
+	write(fd, (void *)mapping, sizeof(struct dir_mapping));
 	//update parent dir inode
-	struct inode parent={};
-	parent.i_number = parentInode.i_number;
-	parent.i_mtime = parentInode.i_mtime;
-	parent.i_type = parentInode.i_type;
-	parent.i_size = parentInode.i_size;
-	parent.i_blocks = parentInode.i_blocks;
-	parent.direct_blk[0] = parentInode.direct_blk[0];
-	parent.direct_blk[1] = parentInode.direct_blk[1];
-	parent.indirect_blk = parentInode.indirect_blk;
-	parent.file_num = parentInode.file_num+1; //update here 
+	struct inode* parent;
+	parent->i_number = parentInode.i_number;
+	parent->i_mtime = parentInode.i_mtime;
+	parent->i_type = parentInode.i_type;
+	parent->i_size = parentInode.i_size;
+	parent->i_blocks = parentInode.i_blocks;
+	parent->direct_blk[0] = parentInode.direct_blk[0];
+	parent->direct_blk[1] = parentInode.direct_blk[1];
+	parent->indirect_blk = parentInode.indirect_blk;
+	parent->file_num = parentInode.file_num+1; //update here 
 
 	lseek(fd, INODE_OFFSET+parentInodeNum*sizeof(struct inode), SEEK_SET); 
-	write(fd, &parent, sizeof(struct inode));
+	write(fd, (void *)parent, sizeof(struct inode));
 
 	close(fd);
 }
 
 int main()
 {
-	printf("inode is: %d\n", open_t("/sad",1));
+	printf("inode is: %d\n", open_t("/sad/sad",0));
 	return 0;
 }
 //dir_mapping = 16byte
