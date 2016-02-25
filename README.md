@@ -1,6 +1,10 @@
 # SFS-Simple-File-System-
 System Programming AS1 a simple file system in C with a simple shell
 
+##Assumption/note:
+- 1 file at most has 2 direct data block and 1 indirect data block (size = 4096+4096+4096*4096/16 = 1056768)
+- didnt update i_size of directory file
+
 ####TODO:
 - [x] mkfs_t.c: create superblock, root directory
 - [x] open_t.c: get inode#/create inode + create/overwrite file/dir
