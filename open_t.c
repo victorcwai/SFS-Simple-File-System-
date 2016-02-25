@@ -8,12 +8,11 @@
 #include <fcntl.h>
 #include <time.h>
 #include "sfsheader.h"
+int open_t( const char *pathname, int flags);
 struct superblock getSuperBlock();
 struct inode getInode(int inode_number);
 int createInode(char* name, struct inode parentInode, int parentInodeNum, int next_available_inode, int next_available_blk, int flags);
 void createMapping(char* name, int inodeNum, struct inode parentInode, int parentInodeNum);
-
-
 
 int open_t( const char *pathname, int flags)
 {
@@ -65,11 +64,6 @@ int open_t( const char *pathname, int flags)
 				int next_available_blk = sb.next_available_blk;
 
 				//targetNum = createInode(tokenArr[count], inode_, inodeNum, next_available_inode, next_available_blk, flags);
-				printf("outside createInode\n");
-				printf("outside createInode\n");
-				printf("outside createInode\n");
-				printf("outside createInode\n");
-				printf("outside createInode\n");
 				printf("outside createInode\n");
 				//update sb
 				return targetNum;
