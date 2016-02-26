@@ -9,10 +9,14 @@
 #include <time.h>
 #include "sfsheader.h"
 
-int main()
+int main(int argc, char *argv[])
 {
-	int fd = open ("HD", O_RDWR, 660);
-
+	int fd = open (argv[1], O_RDWR, 660);
+	if (fd == -1)
+	{
+		printf("No such file. Exit.\n");
+		return -1;
+	}
 	//0-512:BOOT, 512-4K:superblock, 4K-10M:inode, 10M-110M:data
 
 	struct superblock* sb;
@@ -53,7 +57,7 @@ int main()
 	rootDir = (struct dir_mapping*)malloc(sizeof(struct dir_mapping));
 	strcpy(rootDir->dir,".");
 	rootDir->inode_number=0;
-	lseek(fd, DATA_OFFSET, SEEK_SET); //point to INODE_OFFSET
+	lseek(fd, DATA_OFFSET, SEEK_SET);
 	write(fd, (void *)rootDir, sizeof(struct dir_mapping));	
 
 	//update parameter in superblock zz

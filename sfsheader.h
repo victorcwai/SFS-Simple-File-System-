@@ -36,3 +36,8 @@ typedef struct dir_mapping /* Record file information in directory file */
 	char dir[10]; /* The file name in current directory */
 	int inode_number; /* The corresponding inode number */
 }DIR_NODE;//dir_mapping also called DIR_NODE
+
+struct indir_pointer //indirect block's pointer, stored in indirect data block
+{
+	int blkIndex; // index of a datablock
+};
