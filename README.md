@@ -1,7 +1,7 @@
 # SFS-Simple-File-System-
 System Programming AS1 a simple file system in C with a simple shell
 
-###I don't have many time, so comments are rare in the code.
+###I don't have many time, so not many comments are in the code.
 
 ##Assumption/note:
 - 1 file at most has 2 direct data block and 1 indirect data block (size = 4096+4096+4096*4096/16 = 1056768)
@@ -48,8 +48,12 @@ System Programming AS1 a simple file system in C with a simple shell
 - int createInode(char* name, struct inode parentInode, int parentInodeNum, int next_available_inode, int next_available_blk, int flags);
 - void createMapping(char* name, int inodeNum, struct inode parentInode, int parentInodeNum);
 - void replaceFile(int inode_number,int flags);
-- int read_t( int inode_number, int offset, void *buf, int count);
-- int write_t( int inode_number, int offset, void *buf, int count);
+- int read_t(int inode_number, int offset, void *buf, int count);
+- int write_t(int inode_number, int offset, void *buf, int count);
+- int createDirectBlk2(struct inode inode);
+- int createIndirectBlk(struct inode inode);
+- int craeteIndirectPointer(struct inode inode);
+
 
 read_t:
 // If offset is at or past the end of file, no bytes are read, and read_t() returns zero. 
@@ -60,3 +64,5 @@ write_t:
 // space or the maximum size of a file has been
 // achieved. On success, the number of bytes written is returned (zero indicates
 // nothing was written). On error, -1 is returned.
+
+I hate this shit
