@@ -44,9 +44,11 @@ System Programming AS1 a simple file system in C with a simple shell
 ##how to complie:
 - make sure you have 4 header files: sfsheader.h, open_t.c, read_t.c, write_t.c, in the same directory with tshell.c and mkfs_t.c
 - complie mkfs_t.c and tshell.c
-- run 
-    ./mkfs_t HD
-    ./tshell
+- run:
+
+        ./mkfs_t HD
+        ./tshell
+
 - enjoy
 
 ###Function included:
