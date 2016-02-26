@@ -41,6 +41,14 @@ System Programming AS1 a simple file system in C with a simple shell
 - finish cp_t
 - finish tshell.c
 
+##how to complie:
+- make sure you have 4 header files: sfsheader.h, open_t.c, read_t.c, write_t.c, in the same directory with tshell.c and mkfs_t.c
+- complie mkfs_t.c and tshell.c
+- run 
+    ./mkfs_t HD
+    ./tshell
+- enjoy
+
 ###Function included:
 - int open_t( const char *pathname, int flags);
 - struct superblock getSuperBlock();
