@@ -4,28 +4,23 @@ System Programming AS1 a simple file system in C with a simple shell
 ##Assumption/note:
 - 1 file at most has 2 direct data block and 1 indirect data block (size = 4096+4096+4096*4096/16 = 1056768)
 - didnt update i_size of directory file
+- cannot create file with the same file, i.e. no overwrite
 
 ####TODO:
 - [x] mkfs_t.c: create superblock, root directory
 - [x] open_t.c: get inode#/create inode + create/overwrite file/dir
-- [ ] ls_t
+- [x] ls_t
 - [ ] mkdir_t
 - [ ] external_cp
-- [ ] write_t.c
-- [ ] read_t.c
+- [x] write_t.c
+- [x] read_t.c
 - [ ] cat_t
 - [ ] cd_t
 - [ ] cp_t
 - [x] tshell.c
 
 ##Note to self:
-- each dir_mapping in a directory map to 1 file/dir inside it
-    a directory has at least 2 mapping: ".", ".." (itself + parent), except root dir
-- dir_mapping is stored in data block of that directory, sizeof(dir_mapping) is 16.
-- remember to update meta data everytime
-- handle direct2 pointer, indirect pointer
-- build .c library
-- 
+
 
 ###Function included:
 - int open_t( const char *pathname, int flags);
